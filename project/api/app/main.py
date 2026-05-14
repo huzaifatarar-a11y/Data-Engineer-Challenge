@@ -27,23 +27,7 @@ async def lifespan(app: FastAPI):
     """
     settings: Settings = get_settings()
 
-    # ── 1. Run Alembic migrations ───────────────────────────────────────────
-    try:
-        import asyncio
-        from alembic import command
-        from alembic.config import Config as AlembicConfig
-
-        def _run_migrations() -> None:
-            alembic_cfg = AlembicConfig("alembic.ini")
-            alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
-            command.upgrade(alembic_cfg, "head")
-
-        await asyncio.get_event_loop().run_in_executor(None, _run_migrations)
-        logger.info("Alembic migrations applied successfully")
-    except Exception:
-        logger.exception("Failed to apply Alembic migrations — continuing anyway")
-
-    # ── 2. Ensure Elasticsearch index + alias exist ─────────────────────────
+    # ── 1. Ensure Elasticsearch index + alias exist ─────────────────────────
     try:
         from app.elastic.client import build_elasticsearch_client
         from app.elastic.index import IndexManager

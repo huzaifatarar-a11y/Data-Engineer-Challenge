@@ -35,8 +35,8 @@ class PublicationIngestionService:
         *,
         now: datetime | None = None,
     ) -> tuple[Publication, bool]:
-        # Serialize to dict; Pydantic HttpUrl → str, UUID → str
-        data = payload.model_dump(mode="json", exclude={"description", "media_url"})
+        # Serialize to dict; keep native python objects for asyncpg
+        data = payload.model_dump(exclude={"description", "media_url"})
         data["publication_url"] = str(payload.publication_url)
         data["author_id"] = str(payload.author_id)
 
@@ -54,9 +54,9 @@ class PublicationIngestionService:
 
         self.validator.validate(data, now=now, is_duplicate=is_duplicate)
 
-        async with self.session.begin():
-            publication = await self.repository.create_or_update_publication(data)
-            await self.publisher.publish(publication)
+        publication = await self.repository.create_or_update_publication(data)
+        await self.publisher.publish(publication)
+        await self.session.commit()
 
         logger.info(
             "Publication upserted",

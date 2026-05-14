@@ -27,7 +27,7 @@ class ValidationService:
                     extra={
                         "code": warning.code,
                         "field": warning.field,
-                        "message": warning.message,
+                        "details": warning.message,
                     },
                 )
 
