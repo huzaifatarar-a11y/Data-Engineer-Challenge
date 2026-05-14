@@ -35,15 +35,19 @@ class PublicationIngestionService:
         *,
         now: datetime | None = None,
     ) -> tuple[Publication, bool]:
-        data = payload.model_dump()
+        # Serialize to dict; Pydantic HttpUrl → str, UUID → str
+        data = payload.model_dump(mode="json", exclude={"description", "media_url"})
         data["publication_url"] = str(payload.publication_url)
+        data["author_id"] = str(payload.author_id)
 
+        # Compute and store engagement_rate inside the metrics blob
         metrics = normalize_metrics(data.get("metrics"))
         engagement_rate = calculate_engagement_rate(metrics)
         if engagement_rate is not None:
             metrics["engagement_rate"] = engagement_rate
         data["metrics"] = metrics
 
+        # Check for duplicate BEFORE validation (so the duplicate-warn rule fires)
         is_duplicate = await self.repository.publication_exists_by_url(
             data["publication_url"]
         )

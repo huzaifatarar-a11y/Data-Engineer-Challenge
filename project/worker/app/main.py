@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import signal
 
 from elasticsearch import AsyncElasticsearch
 
 from app.core.config import Settings
 from app.core.logging import configure_logging
-from app.db.session import get_session
+from app.db.session import SessionLocal
 from app.elastic.client import build_elasticsearch_client
 from app.queue.pg_notify import PostgresNotifyQueue
 from app.services.indexing.consumer import IndexingConsumer
@@ -20,29 +21,46 @@ async def main() -> None:
     settings = Settings()
     configure_logging(settings.log_level)
 
+    logger.info("Worker starting up", extra={"env": settings.app_env})
+
     queue = PostgresNotifyQueue(settings)
     es_client: AsyncElasticsearch = build_elasticsearch_client(settings)
-    session = await get_session()
 
     retry_policy = RetryPolicy(
         max_attempts=settings.worker_max_retries,
         base_delay_seconds=settings.worker_retry_base_seconds,
     )
 
-    consumer = IndexingConsumer(
-        queue=queue,
-        session=session,
-        es_client=es_client,
-        index_name=settings.elasticsearch_index,
-        retry_policy=retry_policy,
-        max_in_flight=settings.worker_concurrency,
-    )
-
+    # Ensure ES index exists before consuming events
     try:
-        await consumer.run()
-    finally:
-        await session.close()
-        await es_client.close()
+        from app.elastic.index import IndexManager
+        manager = IndexManager(
+            es_client,
+            index_name=settings.elasticsearch_index,
+            alias=settings.elasticsearch_alias,
+        )
+        await manager.ensure_index()
+        logger.info("Elasticsearch index verified")
+    except Exception:
+        logger.exception("Could not verify ES index — indexing may fail")
+
+    # Use a long-lived session for the worker (it only reads from Postgres)
+    async with SessionLocal() as session:
+        consumer = IndexingConsumer(
+            queue=queue,
+            session=session,
+            es_client=es_client,
+            index_name=settings.elasticsearch_index,
+            retry_policy=retry_policy,
+            max_in_flight=settings.worker_concurrency,
+        )
+
+        try:
+            await consumer.run()
+        finally:
+            logger.info("Worker shutting down")
+
+    await es_client.close()
 
 
 if __name__ == "__main__":

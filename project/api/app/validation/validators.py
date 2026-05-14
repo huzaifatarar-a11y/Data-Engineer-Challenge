@@ -107,6 +107,12 @@ def validate_published_at(payload: dict[str, Any], now: datetime | None = None) 
 
 
 def validate_engagement_rate(payload: dict[str, Any]) -> Iterable[ValidationIssue]:
+    """
+    Hard fail if engagement_rate is outside [0, 100].
+    Engagement rate = (likes + views + comments + shares) / follower_count_at_post.
+    For most publications this stays well below 100; values outside that range indicate
+    bad data (e.g. follower_count_at_post of 0 was already caught by the formula).
+    """
     metrics = payload.get("metrics") or {}
     engagement_rate = None
 

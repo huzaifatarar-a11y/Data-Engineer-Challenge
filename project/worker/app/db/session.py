@@ -20,4 +20,5 @@ SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
 async def get_session() -> AsyncSession:
+    """Return a bare session (caller is responsible for lifecycle)."""
     return SessionLocal()
