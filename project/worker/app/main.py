@@ -31,18 +31,8 @@ async def main() -> None:
         base_delay_seconds=settings.worker_retry_base_seconds,
     )
 
-    # Ensure ES index exists before consuming events
-    try:
-        from app.elastic.index import IndexManager
-        manager = IndexManager(
-            es_client,
-            index_name=settings.elasticsearch_index,
-            alias=settings.elasticsearch_alias,
-        )
-        await manager.ensure_index()
-        logger.info("Elasticsearch index verified")
-    except Exception:
-        logger.exception("Could not verify ES index — indexing may fail")
+    # ES index is created/verified by the API on startup or via ES templates.
+    # We do not verify it here because the worker just indexes documents into it.
 
     # Use a long-lived session for the worker (it only reads from Postgres)
     async with SessionLocal() as session:
