@@ -1,0 +1,36 @@
+{
+	"index_patterns": ["publications*"],
+	"template": {
+		"settings": {
+			"number_of_shards": 1,
+			"number_of_replicas": 0,
+			"refresh_interval": "1s"
+		},
+		"mappings": {
+			"dynamic": true,
+			"properties": {
+				"id": {"type": "keyword"},
+				"publication_url": {"type": "keyword"},
+				"author_id": {"type": "keyword"},
+				"author_name": {
+					"type": "text",
+					"fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+				},
+				"title": {
+					"type": "text",
+					"fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+				},
+				"description": {"type": "text"},
+				"platform": {"type": "keyword"},
+				"published_at": {"type": "date"},
+				"created_at": {"type": "date"},
+				"updated_at": {"type": "date"},
+				"deleted_at": {"type": "date"},
+				"metrics": {"type": "object", "dynamic": true}
+			}
+		}
+	},
+	"_meta": {
+		"description": "Index template for publication search"
+	}
+}
