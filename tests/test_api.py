@@ -1,4 +1,4 @@
-"""Integration tests — run against the running Docker stack.
+"""Integration tests, run against the running Docker stack.
 
 Usage:
     docker compose up -d

@@ -1,4 +1,4 @@
-"""Ingestion worker — consumes Kafka, validates, writes to Postgres + OpenSearch + data lake."""
+"""Ingestion worker: consumes Kafka, validates, writes to Postgres + OpenSearch + data lake."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_dt(val):
-    """Parse a datetime value — passthrough if already datetime, parse if string."""
+    """Parse a datetime value, passthrough if already datetime, parse if string."""
     if val is None:
         return None
     if isinstance(val, datetime):
@@ -284,7 +284,7 @@ async def run() -> None:
     )
     await dlq_producer.start()
 
-    logger.info("Worker ready — consuming '%s'", settings.kafka_topic)
+    logger.info("Worker ready, consuming '%s'", settings.kafka_topic)
 
     try:
         while True:
@@ -302,7 +302,7 @@ async def run() -> None:
                 try:
                     await process_batch(messages, os_client, dlq_producer)
                 except Exception:
-                    logger.exception("Batch processing failed — skipping commit")
+                    logger.exception("Batch processing failed, skipping commit")
                     continue
                 await consumer.commit()
                 BATCHES.inc()

@@ -1,4 +1,4 @@
-"""Unit tests for stats logic — engagement rate formula and deletion exclusion.
+"""Unit tests for stats logic, engagement rate formula and deletion exclusion.
 
 These verify the domain logic independently of the database.
 """

@@ -1,4 +1,4 @@
-"""Integration tests for search — requires running Docker stack.
+"""Integration tests for search, requires running Docker stack.
 
 Usage:
     docker compose up -d

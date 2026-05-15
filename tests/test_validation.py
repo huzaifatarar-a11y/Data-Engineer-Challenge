@@ -1,4 +1,4 @@
-"""Unit tests for data-quality validation — no external dependencies."""
+"""Unit tests for data-quality validation, no external dependencies."""
 
 import pytest
 from datetime import datetime, timedelta, timezone

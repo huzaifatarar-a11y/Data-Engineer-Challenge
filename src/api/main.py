@@ -1,4 +1,4 @@
-"""Publications API — accepts writes (via Kafka) and serves reads from Postgres / OpenSearch."""
+"""Publications API accepts writes (via Kafka) and serves reads from Postgres / OpenSearch."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
     try:
         await ensure_index(os_client)
     except Exception:
-        logger.warning("OpenSearch not ready yet — index will be created by worker")
+        logger.warning("OpenSearch not ready yet, index will be created by worker")
     logger.info("API service started")
     yield
     await kafka_producer.stop()
@@ -59,7 +59,7 @@ app = FastAPI(
 
 
 # ---------------------------------------------------------------------------
-# POST /publications  —  produce to Kafka (async ingestion)
+# POST /publications  produce to Kafka (async ingestion)
 # ---------------------------------------------------------------------------
 @app.post("/publications", status_code=202)
 async def create_publication(publication: PublicationIn):
@@ -76,7 +76,7 @@ async def create_publication(publication: PublicationIn):
 
 
 # ---------------------------------------------------------------------------
-# GET /publications/search  —  full-text search via OpenSearch
+# GET /publications/search  full-text search via OpenSearch
 # ---------------------------------------------------------------------------
 @app.get("/publications/search", response_model=SearchResult)
 async def search(
@@ -115,7 +115,7 @@ async def search(
 
 
 # ---------------------------------------------------------------------------
-# GET /publications/{publication_id}  —  single record from Postgres
+# GET /publications/{publication_id}  single record from Postgres
 # ---------------------------------------------------------------------------
 @app.get("/publications/{publication_id}", response_model=PublicationOut)
 async def get_publication(
