@@ -1,4 +1,4 @@
-# Data Platform — Social Media Publications
+# Data Platform Social Media Publications
 
 A production-grade data platform for ingesting, storing, and querying billions of social media publications. Two workloads coexist without interference: low-latency API queries and heavy R&D/analytics batch reads.
 
@@ -85,7 +85,7 @@ graph LR
 ### Data Flow
 
 1. **Producer** POSTs publications to the API (`POST /publications`).
-2. **API** validates the Pydantic schema and produces the message to a **Redpanda** (Kafka-compatible) topic. Returns `202 Accepted` immediately — decouples HTTP latency from storage.
+2. **API** validates the Pydantic schema and produces the message to a **Redpanda** (Kafka-compatible) topic. Returns `202 Accepted` immediately, decouples HTTP latency from storage.
 3. **Ingestion Workers** (horizontally scalable) consume in batches:
    - Run **data-quality checks** (hard-fail → DLQ, warn → log and continue).
    - Compute `engagement_rate` from metrics.
@@ -109,7 +109,7 @@ graph LR
 
 ### Trade-offs
 
-- **Eventual consistency on writes**: `POST` returns `202`; data is visible after the worker processes it (typically < 2 s). This is the right trade-off for high write throughput — the producer doesn't need synchronous confirmation.
+- **Eventual consistency on writes**: `POST` returns `202`; data is visible after the worker processes it (typically < 2 s). This is the right trade-off for high write throughput, the producer doesn't need synchronous confirmation.
 - **Non-partitioned Postgres table**: For the local implementation, we use a standard table with B-tree indexes. For production (billions of rows), the table should be range-partitioned by `published_at` (see Migration Plan below).
 - **OpenSearch replicas = 0**: Single-node setup for local dev. Production would use ≥ 1 replica.
 - **JSONB for metrics**: Flexible schema allows per-platform metrics without migrations, at the cost of not having columnar storage efficiency. For analytics, the MinIO data lake (with Parquet conversion) compensates.
@@ -137,21 +137,21 @@ engagement_rate = (likes + views + comments + shares) / follower_count_at_post
 
 | Rule | Behavior |
 |------|----------|
-| `publication_url`, `author_id`, `published_at` are null | **Hard fail** — rejected, sent to DLQ |
+| `publication_url`, `author_id`, `published_at` are null | **Hard fail**, rejected, sent to DLQ |
 | `engagement_rate` not in [0, 100] | **Hard fail** |
 | `published_at` in the future | **Hard fail** |
-| `published_at` older than 24 h | **Warn** — logged, ingested normally |
-| Duplicate `publication_url` | **Warn** — logged, existing record updated (upsert) |
+| `published_at` older than 24 h | **Warn**, logged, ingested normally |
+| Duplicate `publication_url` | **Warn**, logged, existing record updated (upsert) |
 
 ---
 
-## Schema Evolution — Migration Plan
+## Schema Evolution: Migration Plan
 
 ### Adding `platform` field
 
 **Goal**: Add an optional `platform` column (`instagram | tiktok | youtube | other`) without downtime while ingestion and API continue to serve live traffic.
 
-#### Phase 1 — Backward-compatible column addition
+#### Phase 1: Backward-compatible column addition
 
 ```sql
 -- Migration 001 already creates the column as nullable:
@@ -166,14 +166,14 @@ CREATE INDEX ix_publications_platform ON publications (platform);
 - **Backward compatible**: Old records have `platform = NULL`, old code ignores the column, new code checks for NULL.
 - **OpenSearch**: The mapping already accepts `platform` as a `keyword` field. Documents without it are handled gracefully.
 
-#### Phase 2 — Application rollout (rolling deploy)
+#### Phase 2: Application rollout (rolling deploy)
 
 1. Deploy new **worker** version that writes `platform` when present in the Kafka message.
 2. Deploy new **API** version that returns `platform` in responses and accepts it in `POST`.
 3. Deploy new **producer** version that includes `platform` in outgoing messages.
-4. Old messages (without `platform`) continue to work — the field defaults to `NULL`.
+4. Old messages (without `platform`) continue to work, the field defaults to `NULL`.
 
-#### Phase 3 — Per-platform metrics
+#### Phase 3: Per-platform metrics
 
 The `metrics` column is `JSONB`, so each platform can add new fields without a schema migration:
 
@@ -194,7 +194,7 @@ The `metrics` column is `JSONB`, so each platform can add new fields without a s
 - OpenSearch dynamic mapping auto-detects new numeric fields in the `metrics` object.
 - The engagement rate formula uses only the base fields, so new platform metrics don't break it.
 
-#### Phase 4 — Partitioning (production)
+#### Phase 4: Partitioning (production)
 
 For production with billions of rows:
 
@@ -237,9 +237,9 @@ For true URL uniqueness with partitioning, use a separate `publication_urls(publ
 ## What I Would Do Differently With More Time
 
 1. **Partitioned Postgres table** with `pg_partman` for automatic monthly partition management and a URL lookup table for cross-partition uniqueness.
-2. **Parquet export** instead of JSONL — columnar format is much more efficient for analytics (Spark, DuckDB, Polars).
+2. **Parquet export** instead of JSONL, columnar format is much more efficient for analytics (Spark, DuckDB, Polars).
 3. **Schema registry** (e.g., Confluent Schema Registry or Redpanda's built-in) to enforce Avro/Protobuf schemas on the Kafka topic and catch breaking changes before they reach workers.
-4. **CDC (Change Data Capture)** via Debezium to stream Postgres changes to OpenSearch instead of dual-writing — eliminates the risk of Postgres/OpenSearch divergence.
+4. **CDC (Change Data Capture)** via Debezium to stream Postgres changes to OpenSearch instead of dual-writing, eliminates the risk of Postgres/OpenSearch divergence.
 5. **Grafana + Prometheus stack** with pre-built dashboards for ingestion rate, DLQ rate, search latency P99, and Kafka consumer lag.
 6. **Dead letter queue consumer** that retries or alerts on validation failures.
 7. **Rate limiting and authentication** on the API.
